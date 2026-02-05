@@ -1,0 +1,67 @@
+name: Update CSV
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"  # every 5 minutes
+  workflow_dispatch:      # allows manual run
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Ping websites and update CSV
+      run: |
+        import csv
+        import requests
+        from datetime import datetime
+
+        csv_file = 'docs/data.csv'
+
+        # List of sites to monitor
+        sites = [
+            {"name": "Google", "url": "https://www.google.com"},
+            {"name": "Example", "url": "https://example.com"}
+        ]
+
+        now = datetime.utcnow().isoformat()
+        rows = []
+
+        for site in sites:
+            try:
+                r = requests.get(site["url"], timeout=10)
+                uptime = 1 if r.status_code == 200 else 0
+                response_time = int(r.elapsed.total_seconds() * 1000)
+            except:
+                uptime = 0
+                response_time = 0
+            rows.append([now, site["name"], uptime, response_time])
+
+        # Append to CSV (create file if it doesn't exist)
+        try:
+            with open(csv_file, 'a', newline='') as f:
+                writer = csv.writer(f)
+                for row in rows:
+                    writer.writerow(row)
+        except FileNotFoundError:
+            with open(csv_file, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(['timestamp','site','uptime','responseTime'])
+                for row in rows:
+                    writer.writerow(row)
+
+    - name: Commit and push updated CSV
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add docs/data.csv
+        git commit -m "Update CSV with latest uptime $(date -u +'%Y-%m-%d %H:%M:%S')" || echo "No changes"
+        git push
