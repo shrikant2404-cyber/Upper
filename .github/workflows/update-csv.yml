@@ -2,7 +2,7 @@ name: Update CSV
 
 on:
   schedule:
-    - cron: "*/5 * * * *"  # every 5 minute (UTC)
+    - cron: "0 * * * *"  # every 1 hour (UTC)
   workflow_dispatch:       # allows manual trigger
 
 jobs:
