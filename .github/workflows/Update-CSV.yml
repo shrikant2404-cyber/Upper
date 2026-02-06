@@ -1,0 +1,76 @@
+name: Update-CSV
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"  # every 10 minutes (UTC)
+  workflow_dispatch:       # allows manual trigger
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout repo
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      # 2️⃣ Setup Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      # 3️⃣ Install dependencies
+      - name: Install requests
+        run: pip install requests
+
+      # 4️⃣ Ping websites and append CSV
+      - name: Ping websites and update CSV
+        run: |
+          python - << 'EOF'
+          import csv
+          import requests
+          from datetime import datetime
+
+          csv_file = 'docs/data.csv'
+
+          # Add all websites you want to monitor here
+          sites = [
+              {"name": "Cidco", "url": "https://cidco.maharashtra.gov.in"}
+          ]
+
+          now = datetime.utcnow().isoformat()
+          rows = []
+
+          for site in sites:
+              try:
+                  r = requests.get(site["url"], timeout=10)
+                  uptime = 1 if r.status_code == 200 else 0
+                  response_time = int(r.elapsed.total_seconds() * 1000)
+              except:
+                  uptime = 0
+                  response_time = 0
+              rows.append([now, site["name"], uptime, response_time])
+
+          # Append or create CSV
+          try:
+              with open(csv_file, 'a', newline='') as f:
+                  writer = csv.writer(f)
+                  for row in rows:
+                      writer.writerow(row)
+          except FileNotFoundError:
+              with open(csv_file, 'w', newline='') as f:
+                  writer = csv.writer(f)
+                  writer.writerow(['timestamp','site','uptime','responseTime'])
+                  for row in rows:
+                      writer.writerow(row)
+          EOF
+
+      # 5️⃣ Commit and push changes
+      - name: Commit and push CSV
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add docs/data.csv
+          git commit -m "Update CSV with latest uptime $(date -u +'%Y-%m-%d %H:%M:%S')" || echo "No changes"
+          git push
