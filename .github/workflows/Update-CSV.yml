@@ -36,7 +36,7 @@ jobs:
 
           # Add all websites you want to monitor here
           sites = [
-              {"name": "Cidco", "url": "https://cidco.maharashtra.gov.in"}
+              {"name": "Cidco", "url": "https://cidco.maharashtra.gov.in/images/english_logo.png"}
           ]
 
           now = datetime.utcnow().isoformat()
